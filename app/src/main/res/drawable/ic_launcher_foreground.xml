@@ -1,0 +1,89 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Main image frame -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M30,38 L78,38 A6,6 0,0 1,84 44 L84,64 A6,6 0,0 1,78 70 L30,70 A6,6 0,0 1,24 64 L24,44 A6,6 0,0 1,30 38 Z" />
+    
+    <!-- Inner image content area -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,44 L74,44 A2,2 0,0 1,76 46 L76,62 A2,2 0,0 1,74 64 L34,64 A2,2 0,0 1,32 62 L32,46 A2,2 0,0 1,34 44 Z" />
+    
+    <!-- Image landscape content -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M36,48 L72,48 L72,60 L36,60 Z" />
+    
+    <!-- Mountain silhouette -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M40,58 L46,50 L52,56 L58,48 L68,58 Z" />
+    
+    <!-- Sun -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M62,52m-2.5,0a2.5,2.5 0,1 1,5 0a2.5,2.5 0,1 1,-5 0" />
+    
+    <!-- Transformation arrows -->
+    <!-- Left input arrow -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M22,54 L28,54"
+        android:strokeWidth="1.5"
+        android:strokeColor="#4CAF50" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M25,52 L28,54 L25,56" 
+        android:strokeWidth="1.5"
+        android:strokeColor="#4CAF50"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillType="nonZero" />
+    
+    <!-- Right output arrow -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M80,54 L86,54"
+        android:strokeWidth="1.5"
+        android:strokeColor="#4CAF50" />
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M83,52 L86,54 L83,56"
+        android:strokeWidth="1.5"
+        android:strokeColor="#4CAF50"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillType="nonZero" />
+    
+    <!-- Share icon in top-right corner -->
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M70,34m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+    
+    <!-- Share arrow icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,31 L70,36 M68,33 L70,31 L72,33"
+        android:strokeWidth="1.2"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    
+    <!-- Small gear/settings icon to indicate processing -->
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M38,34m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    
+    <!-- Gear teeth -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,31.5 L38,36.5 M35.5,34 L40.5,34 M36.5,32 L39.5,36 M39.5,32 L36.5,36"
+        android:strokeWidth="0.8"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+</vector>
