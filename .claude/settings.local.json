@@ -5,7 +5,8 @@
       "Bash(./gradlew:*)",
       "WebFetch(domain:)",
       "Bash(ls:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }
