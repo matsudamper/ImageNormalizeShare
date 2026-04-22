@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val ciDebugKeystorePath = System.getenv("DEBUG_KEYSTORE_PATH")
+val ciDebugKeystoreFile = ciDebugKeystorePath?.let { file(it) }
+val useCiDebugKeystore = ciDebugKeystoreFile != null && ciDebugKeystoreFile.exists()
+
 android {
     namespace = "net.matsudamper.normalize_share_image"
     compileSdk = 36
@@ -18,6 +22,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (useCiDebugKeystore) {
+            create("debugCi") {
+                storeFile = ciDebugKeystoreFile
+                storePassword = System.getenv("DEBUG_KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("DEBUG_KEY_ALIAS") ?: "androiddebugkey"
+                keyPassword = System.getenv("DEBUG_KEY_PASSWORD") ?: "android"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -25,6 +40,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (useCiDebugKeystore) {
+                signingConfig = signingConfigs.getByName("debugCi")
+            }
         }
     }
     compileOptions {
