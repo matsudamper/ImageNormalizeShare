@@ -16,6 +16,7 @@ import java.io.IOException
 
 enum class ImageFormat(val displayName: String, val extension: String, val mimeType: String) {
     PNG("PNG", "png", "image/png"),
+    JPEG("JPEG", "jpg", "image/jpeg"),
     WEBP("WebP", "webp", "image/webp");
 }
 
@@ -23,7 +24,8 @@ enum class ImageQuality(val displayName: String, val value: Int) {
     LOW("低画質 (25%)", 25),
     MEDIUM("中画質 (50%)", 50),
     HIGH("高画質 (75%)", 75),
-    VERY_HIGH("最高画質 (100%)", 100);
+    VERY_HIGH("最高画質 (100%)", 100),
+    LOSSLESS("ロスレス", 100);
 }
 
 data class ConvertedImage(
@@ -145,10 +147,9 @@ class ImageConverter(private val context: Context) {
             
             val compressFormat = when (format) {
                 ImageFormat.PNG -> Bitmap.CompressFormat.PNG
-                // WebPは最高画質(100%)のときのみロスレス圧縮を使用し、
-                // それ以外はロッシー圧縮（quality値でサイズと画質のバランスを調整）
+                ImageFormat.JPEG -> Bitmap.CompressFormat.JPEG
                 ImageFormat.WEBP -> {
-                    if (quality == ImageQuality.VERY_HIGH) {
+                    if (quality == ImageQuality.LOSSLESS) {
                         Bitmap.CompressFormat.WEBP_LOSSLESS
                     } else {
                         Bitmap.CompressFormat.WEBP_LOSSY

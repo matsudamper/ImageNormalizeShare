@@ -83,8 +83,9 @@ private enum class ApplyMode(val label: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageConverterScreen(
-    onLaunch: () -> Unit = {},
-    onImageSelected: (List<Uri>) -> Unit = {},
+    externalSelectedUris: List<Uri> = emptyList(),
+    onExternalUrisConsumed: () -> Unit = {},
+    onRequestSelectImages: (() -> Unit)? = null,
     onShareImages: (List<ConvertedImage>) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -130,6 +131,10 @@ fun ImageConverterScreen(
     }
 
     fun openImagePicker() {
+        onRequestSelectImages?.let {
+            it()
+            return
+        }
         if ((context as MainActivity).checkPermissions()) {
             imagePickerLauncher.launch("image/*")
         } else {
@@ -137,8 +142,14 @@ fun ImageConverterScreen(
         }
     }
     
-    LaunchedEffect(Unit) {
-        onLaunch()
+    LaunchedEffect(externalSelectedUris) {
+        if (externalSelectedUris.isNotEmpty()) {
+            selectedUris = externalSelectedUris
+            convertedImages = emptyList()
+            perImageOptions = externalSelectedUris.map { PerImageOption() }
+            selectedImageIndex = 0
+            onExternalUrisConsumed()
+        }
     }
     
     Scaffold(
@@ -217,8 +228,11 @@ fun ImageConverterScreen(
                     applyMode = it
                     convertedImages = emptyList()
                 },
-                onBatchFormatChanged = {
-                    batchFormat = it
+                onBatchFormatChanged = { format ->
+                    batchFormat = format
+                    if (format == ImageFormat.JPEG && batchQuality == ImageQuality.LOSSLESS) {
+                        batchQuality = ImageQuality.VERY_HIGH
+                    }
                     convertedImages = emptyList()
                 },
                 onBatchQualityChanged = {
@@ -227,7 +241,13 @@ fun ImageConverterScreen(
                 },
                 onPerImageFormatChanged = { index, format ->
                     perImageOptions = perImageOptions.toMutableList().also {
-                        it[index] = it[index].copy(format = format)
+                        val current = it[index]
+                        val newQuality = if (format == ImageFormat.JPEG && current.quality == ImageQuality.LOSSLESS) {
+                            ImageQuality.VERY_HIGH
+                        } else {
+                            current.quality
+                        }
+                        it[index] = current.copy(format = format, quality = newQuality)
                     }
                     convertedImages = emptyList()
                 },
@@ -470,6 +490,7 @@ private fun BatchSettingsSection(
     QualitySelector(
         label = "画質",
         selectedQuality = selectedQuality,
+        format = selectedFormat,
         enabled = selectedFormat != ImageFormat.PNG,
         onQualityChanged = onQualityChanged
     )
@@ -534,6 +555,7 @@ private fun IndividualSettingsSection(
             QualitySelector(
                 label = "画質",
                 selectedQuality = currentOption.quality,
+                format = currentOption.format,
                 enabled = currentOption.format != ImageFormat.PNG,
                 onQualityChanged = onQualityChanged
             )
@@ -620,6 +642,7 @@ private fun FormatSelector(
 private fun QualitySelector(
     label: String,
     selectedQuality: ImageQuality,
+    format: ImageFormat,
     enabled: Boolean = true,
     onQualityChanged: (ImageQuality) -> Unit
 ) {
@@ -630,7 +653,7 @@ private fun QualitySelector(
         color = if (enabled) MaterialTheme.colorScheme.onSurface
                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     )
-    
+
     if (!enabled) {
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -640,13 +663,19 @@ private fun QualitySelector(
         )
         return
     }
-    
+
     Spacer(modifier = Modifier.height(4.dp))
-    
+
+    val qualities = if (format == ImageFormat.JPEG) {
+        ImageQuality.entries.filter { it != ImageQuality.LOSSLESS }
+    } else {
+        ImageQuality.entries
+    }
+
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ImageQuality.entries.forEach { quality ->
+        qualities.forEach { quality ->
             FilterChip(
                 selected = selectedQuality == quality,
                 onClick = { onQualityChanged(quality) },

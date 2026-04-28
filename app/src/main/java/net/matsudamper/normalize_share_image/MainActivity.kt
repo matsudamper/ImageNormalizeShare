@@ -6,25 +6,26 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import net.matsudamper.normalize_share_image.core.CacheManager
 import net.matsudamper.normalize_share_image.core.ConvertedImage
-import net.matsudamper.normalize_share_image.core.ImageProcessor
 import net.matsudamper.normalize_share_image.core.PermissionManager
 import net.matsudamper.normalize_share_image.ui.ImageConverterScreen
 import net.matsudamper.normalize_share_image.ui.theme.NormalizeImageShareTheme
 
 class MainActivity : ComponentActivity() {
-    private lateinit var imageProcessor: ImageProcessor
     private lateinit var permissionManager: PermissionManager
     private lateinit var cacheManager: CacheManager
+    private var pendingSharedUris by mutableStateOf<List<Uri>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
-        imageProcessor = ImageProcessor(this)
+
         permissionManager = PermissionManager(this)
         cacheManager = CacheManager(this)
         
@@ -38,43 +39,37 @@ class MainActivity : ComponentActivity() {
         setContent {
             NormalizeImageShareTheme {
                 ImageConverterScreen(
-                    onLaunch = { handleIntent(intent) },
+                    externalSelectedUris = pendingSharedUris,
+                    onExternalUrisConsumed = {
+                        pendingSharedUris = emptyList()
+                    },
                     onShareImages = { convertedImages -> shareConvertedImages(convertedImages) }
                 )
             }
         }
-        
-        // 起動時のインテント処理
+
         handleIntent(intent)
     }
-    
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleIntent(intent)
     }
-    
+
     private fun handleIntent(intent: Intent) {
         when (intent.action) {
             Intent.ACTION_SEND -> {
                 val imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-                imageUri?.let { processAndShareImages(listOf(it)) }
+                imageUri?.let { pendingSharedUris = listOf(it) }
             }
             Intent.ACTION_SEND_MULTIPLE -> {
                 val imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
-                imageUris?.let { processAndShareImages(it) }
+                imageUris?.let { pendingSharedUris = it }
             }
         }
     }
-    
-    private fun processAndShareImages(uris: List<Uri>) {
-        imageProcessor.processAndShareImages(
-            uris = uris,
-            contentResolver = contentResolver
-        ) { shareIntent ->
-            imageProcessor.shareImages(shareIntent)
-        }
-    }
-    
+
     private fun shareConvertedImages(convertedImages: List<ConvertedImage>) {
         val uris = convertedImages.map { it.uri }
         val shareIntent = if (uris.size == 1) {
