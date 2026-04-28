@@ -24,35 +24,6 @@ class CacheManager(private val context: Context) {
         }
     }
     
-    suspend fun cleanupConvertedImages() = withContext(Dispatchers.IO) {
-        try {
-            val cacheDir = context.cacheDir
-            
-            cacheDir.listFiles()?.forEach { file ->
-                if (file.isFile && file.name.startsWith("converted_") &&
-                    (file.name.endsWith(".png") || file.name.endsWith(".webp"))) {
-                    val deleted = file.delete()
-                    if (deleted) {
-                        println("Deleted converted image: ${file.name}")
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-    
-    suspend fun getCacheSize(): Long = withContext(Dispatchers.IO) {
-        try {
-            val cacheDir = context.cacheDir
-            calculateDirectorySize(cacheDir)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            0L
-        }
-    }
-    
-    
     private fun calculateDirectorySize(directory: File): Long {
         var size = 0L
         directory.listFiles()?.forEach { file ->
