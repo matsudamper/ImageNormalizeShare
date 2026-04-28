@@ -129,7 +129,13 @@ class ImageConverter(private val context: Context) {
             
             val compressFormat = when (format) {
                 ImageFormat.PNG -> Bitmap.CompressFormat.PNG
-                ImageFormat.WEBP -> Bitmap.CompressFormat.WEBP_LOSSY
+                ImageFormat.WEBP -> {
+                    if (quality == ImageQuality.VERY_HIGH) {
+                        Bitmap.CompressFormat.WEBP_LOSSLESS
+                    } else {
+                        Bitmap.CompressFormat.WEBP_LOSSY
+                    }
+                }
             }
             
             bitmap.compress(compressFormat, quality.value, outputStream)
