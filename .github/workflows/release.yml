@@ -40,7 +40,7 @@ jobs:
         run: echo "unix_time=$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.timestamp.outputs.unix_time }}
           name: ${{ steps.timestamp.outputs.unix_time }}
