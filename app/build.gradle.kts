@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
 }
 
 val ciDebugKeystorePath = System.getenv("DEBUG_KEYSTORE_PATH")
