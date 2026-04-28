@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import net.matsudamper.normalize_share_image.core.CacheManager
+import net.matsudamper.normalize_share_image.core.ConvertedImage
 import net.matsudamper.normalize_share_image.core.ImageProcessor
 import net.matsudamper.normalize_share_image.core.PermissionManager
 import net.matsudamper.normalize_share_image.ui.ImageConverterScreen
@@ -38,7 +39,7 @@ class MainActivity : ComponentActivity() {
             NormalizeImageShareTheme {
                 ImageConverterScreen(
                     onLaunch = { handleIntent(intent) },
-                    onImageSelected = { uris: List<Uri> -> processAndShareImages(uris) }
+                    onShareImages = { convertedImages -> shareConvertedImages(convertedImages) }
                 )
             }
         }
@@ -72,6 +73,34 @@ class MainActivity : ComponentActivity() {
         ) { shareIntent ->
             imageProcessor.shareImages(shareIntent)
         }
+    }
+    
+    private fun shareConvertedImages(convertedImages: List<ConvertedImage>) {
+        val uris = convertedImages.map { it.uri }
+        val shareIntent = if (uris.size == 1) {
+            Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_STREAM, uris.first())
+                type = "image/*"
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } else {
+            Intent().apply {
+                action = Intent.ACTION_SEND_MULTIPLE
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                type = "image/*"
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                uris.forEachIndexed { index, uri ->
+                    if (index == 0) {
+                        clipData = android.content.ClipData.newRawUri("", uri)
+                    } else {
+                        clipData?.addItem(android.content.ClipData.Item(uri))
+                    }
+                }
+            }
+        }
+        val chooserIntent = Intent.createChooser(shareIntent, "画像を共有")
+        startActivity(chooserIntent)
     }
     
     internal fun checkPermissions(): Boolean {

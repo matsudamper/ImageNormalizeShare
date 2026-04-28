@@ -29,7 +29,8 @@ class CacheManager(private val context: Context) {
             val cacheDir = context.cacheDir
             
             cacheDir.listFiles()?.forEach { file ->
-                if (file.isFile && file.name.startsWith("converted_") && file.name.endsWith(".png")) {
+                if (file.isFile && file.name.startsWith("converted_") &&
+                    (file.name.endsWith(".png") || file.name.endsWith(".webp"))) {
                     val deleted = file.delete()
                     if (deleted) {
                         println("Deleted converted image: ${file.name}")
