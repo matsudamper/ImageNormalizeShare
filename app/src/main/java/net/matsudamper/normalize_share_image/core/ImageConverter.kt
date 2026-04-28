@@ -34,6 +34,11 @@ data class ConvertedImage(
     val quality: ImageQuality
 )
 
+data class PerImageOption(
+    val format: ImageFormat = ImageFormat.PNG,
+    val quality: ImageQuality = ImageQuality.VERY_HIGH
+)
+
 class ImageConverter(private val context: Context) {
     
     suspend fun convertImages(
@@ -57,10 +62,21 @@ class ImageConverter(private val context: Context) {
         quality: ImageQuality = ImageQuality.VERY_HIGH,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): List<ConvertedImage> = withContext(Dispatchers.IO) {
+        val options = uris.map { PerImageOption(format, quality) }
+        convertImagesWithPerImageOptions(uris, contentResolver, options, onProgress)
+    }
+
+    suspend fun convertImagesWithPerImageOptions(
+        uris: List<Uri>,
+        contentResolver: ContentResolver,
+        options: List<PerImageOption>,
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ): List<ConvertedImage> = withContext(Dispatchers.IO) {
         val convertedImages = mutableListOf<ConvertedImage>()
         
         uris.forEachIndexed { index, uri ->
             onProgress(index + 1, uris.size)
+            val option = options.getOrElse(index) { PerImageOption() }
             
             try {
                 val inputStream = contentResolver.openInputStream(uri)
@@ -69,7 +85,7 @@ class ImageConverter(private val context: Context) {
                 bitmap?.let { originalBitmap ->
                     val rotatedBitmap = applyExifRotation(uri, originalBitmap, contentResolver)
                     
-                    val converted = convertImage(rotatedBitmap, format, quality, index)
+                    val converted = convertImage(rotatedBitmap, option.format, option.quality, index)
                     converted?.let { convertedImages.add(it) }
                     
                     if (rotatedBitmap != originalBitmap) {
