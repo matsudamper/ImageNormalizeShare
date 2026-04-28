@@ -145,6 +145,8 @@ class ImageConverter(private val context: Context) {
             
             val compressFormat = when (format) {
                 ImageFormat.PNG -> Bitmap.CompressFormat.PNG
+                // WebPは最高画質(100%)のときのみロスレス圧縮を使用し、
+                // それ以外はロッシー圧縮（quality値でサイズと画質のバランスを調整）
                 ImageFormat.WEBP -> {
                     if (quality == ImageQuality.VERY_HIGH) {
                         Bitmap.CompressFormat.WEBP_LOSSLESS

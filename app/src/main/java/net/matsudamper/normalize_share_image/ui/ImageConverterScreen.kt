@@ -129,7 +129,7 @@ fun ImageConverterScreen(
         }
     }
 
-    fun launchPicker() {
+    fun openImagePicker() {
         if ((context as MainActivity).checkPermissions()) {
             imagePickerLauncher.launch("image/*")
         } else {
@@ -178,7 +178,7 @@ fun ImageConverterScreen(
                 }
             } else {
                 ExtendedFloatingActionButton(
-                    onClick = { launchPicker() },
+                    onClick = { openImagePicker() },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
@@ -260,7 +260,7 @@ fun ImageConverterScreen(
                         isConverting = false
                     }
                 },
-                onSelectNewImages = { launchPicker() }
+                onSelectNewImages = { openImagePicker() }
             )
         }
     }
