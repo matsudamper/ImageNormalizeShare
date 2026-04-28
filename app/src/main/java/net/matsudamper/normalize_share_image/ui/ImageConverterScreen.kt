@@ -470,6 +470,7 @@ private fun BatchSettingsSection(
     QualitySelector(
         label = "画質",
         selectedQuality = selectedQuality,
+        enabled = selectedFormat != ImageFormat.PNG,
         onQualityChanged = onQualityChanged
     )
 }
@@ -533,6 +534,7 @@ private fun IndividualSettingsSection(
             QualitySelector(
                 label = "画質",
                 selectedQuality = currentOption.quality,
+                enabled = currentOption.format != ImageFormat.PNG,
                 onQualityChanged = onQualityChanged
             )
 
@@ -549,8 +551,9 @@ private fun IndividualSettingsSection(
                 Spacer(modifier = Modifier.height(4.dp))
                 perImageOptions.forEachIndexed { i, opt ->
                     val prefix = if (i == selectedImageIndex) "▶ " else "   "
+                    val qualityPart = if (opt.format != ImageFormat.PNG) " / ${opt.quality.displayName}" else ""
                     Text(
-                        text = "${prefix}画像${i + 1}: ${opt.format.displayName} / ${opt.quality.displayName}",
+                        text = "${prefix}画像${i + 1}: ${opt.format.displayName}$qualityPart",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = if (i == selectedImageIndex) FontWeight.Bold else FontWeight.Normal,
                         color = if (i == selectedImageIndex)
@@ -617,13 +620,26 @@ private fun FormatSelector(
 private fun QualitySelector(
     label: String,
     selectedQuality: ImageQuality,
+    enabled: Boolean = true,
     onQualityChanged: (ImageQuality) -> Unit
 ) {
     Text(
         text = label,
         style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold
+        fontWeight = FontWeight.Bold,
+        color = if (enabled) MaterialTheme.colorScheme.onSurface
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     )
+    
+    if (!enabled) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "PNG形式では画質設定は適用されません",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
     
     Spacer(modifier = Modifier.height(4.dp))
     
@@ -677,8 +693,9 @@ private fun ConversionResultCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             convertedImages.forEachIndexed { index, image ->
+                val qualityPart = if (image.format != ImageFormat.PNG) " / ${image.quality.displayName}" else ""
                 Text(
-                    text = "画像${index + 1}: ${image.format.displayName} / ${image.quality.displayName} — ${formatFileSize(image.fileSize)}",
+                    text = "画像${index + 1}: ${image.format.displayName}$qualityPart — ${formatFileSize(image.fileSize)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
