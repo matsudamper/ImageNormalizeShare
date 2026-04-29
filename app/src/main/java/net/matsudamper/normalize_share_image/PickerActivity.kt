@@ -9,65 +9,47 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import net.matsudamper.normalize_share_image.core.CacheManager
-import net.matsudamper.normalize_share_image.core.ImageConverter
+import net.matsudamper.normalize_share_image.core.ConvertedImage
+import net.matsudamper.normalize_share_image.ui.ImageConverterScreen
 import net.matsudamper.normalize_share_image.ui.theme.NormalizeImageShareTheme
 
 class PickerActivity : ComponentActivity() {
-    private lateinit var imageConverter: ImageConverter
     private lateinit var cacheManager: CacheManager
-    private var isProcessing by mutableStateOf(false)
-    private var progress by mutableStateOf(0 to 0) // current to total
-    
+    private var pendingSelectedUris = mutableStateOf<List<Uri>>(emptyList())
+    private var hasImagesSelected = false
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            launchImagePicker()
+            requestImageSelection()
         } else {
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
     }
-    
+
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            processAndReturnImages(uris)
-        } else {
+            hasImagesSelected = true
+            pendingSelectedUris.value = uris
+        } else if (!hasImagesSelected) {
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
+        // else: 再選択キャンセル → 既存の選択状態を維持
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        imageConverter = ImageConverter(this)
+
         cacheManager = CacheManager(this)
         
         // 初回起動時のみキャッシュクリーンアップを実行
@@ -79,20 +61,19 @@ class PickerActivity : ComponentActivity() {
         
         setContent {
             NormalizeImageShareTheme {
-                if (isProcessing) {
-                    ProcessingScreen(
-                        current = progress.first,
-                        total = progress.second
-                    )
-                }
+                ImageConverterScreen(
+                    externalSelectedUris = pendingSelectedUris.value,
+                    onExternalUrisConsumed = {
+                        pendingSelectedUris.value = emptyList()
+                    },
+                    onRequestSelectImages = { requestImageSelection() },
+                    onShareImages = { convertedImages -> returnConvertedImages(convertedImages) }
+                )
             }
         }
-        
-        // 権限チェック
-        if (checkPermissions()) {
-            launchImagePicker()
-        } else {
-            requestPermissions()
+
+        if (savedInstanceState == null) {
+            requestImageSelection()
         }
     }
     
@@ -107,91 +88,33 @@ class PickerActivity : ComponentActivity() {
         permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
     }
     
-    private fun launchImagePicker() {
-        imagePickerLauncher.launch("image/*")
+    private fun requestImageSelection() {
+        if (checkPermissions()) {
+            imagePickerLauncher.launch("image/*")
+        } else {
+            requestPermissions()
+        }
     }
-    
-    private fun processAndReturnImages(uris: List<Uri>) {
-        isProcessing = true
-        
-        lifecycleScope.launch {
-            try {
-                val convertedUris = imageConverter.convertImages(
-                    uris = uris,
-                    contentResolver = contentResolver
-                ) { current, total ->
-                    progress = current to total
-                }
-                
-                // PICKの場合は単一画像、GET_CONTENTの場合は複数対応
-                val resultIntent = Intent().apply {
-                    if (convertedUris.size == 1) {
-                        data = convertedUris.first()
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+    private fun returnConvertedImages(convertedImages: List<ConvertedImage>) {
+        val uris = convertedImages.map { it.uri }
+        val resultIntent = Intent().apply {
+            if (uris.size == 1) {
+                data = uris.first()
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } else {
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                uris.forEachIndexed { index, uri ->
+                    if (index == 0) {
+                        clipData = android.content.ClipData.newRawUri("", uri)
                     } else {
-                        // 複数画像の場合はEXTRA_STREAMに配列で設定
-                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(convertedUris))
-                        // 複数画像の場合は各URIに権限を付与
-                        convertedUris.forEach { uri ->
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            // clipDataも設定して互換性を向上
-                            if (clipData == null) {
-                                clipData = android.content.ClipData.newRawUri("", uri)
-                            } else {
-                                clipData?.addItem(android.content.ClipData.Item(uri))
-                            }
-                        }
+                        clipData?.addItem(android.content.ClipData.Item(uri))
                     }
                 }
-                
-                setResult(Activity.RESULT_OK, resultIntent)
-                finish()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                setResult(Activity.RESULT_CANCELED)
-                finish()
             }
         }
-    }
-}
-
-@Composable
-private fun ProcessingScreen(
-    current: Int,
-    total: Int
-) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "画像を変換中...",
-                style = MaterialTheme.typography.titleLarge
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            if (total > 1) {
-                CircularProgressIndicator(
-                    progress = { current.toFloat() / total.toFloat() }
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "$current / $total",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                CircularProgressIndicator()
-            }
-        }
+        setResult(Activity.RESULT_OK, resultIntent)
+        finish()
     }
 }
