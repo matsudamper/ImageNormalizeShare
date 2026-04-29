@@ -14,6 +14,33 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
+enum class ImageFormat(val displayName: String, val extension: String, val mimeType: String) {
+    PNG("PNG", "png", "image/png"),
+    JPEG("JPEG", "jpg", "image/jpeg"),
+    WEBP("WebP", "webp", "image/webp");
+}
+
+enum class ImageQuality(val displayName: String, val value: Int) {
+    LOW("低画質 (25%)", 25),
+    MEDIUM("中画質 (50%)", 50),
+    HIGH("高画質 (75%)", 75),
+    VERY_HIGH("最高画質 (100%)", 100),
+    LOSSLESS("ロスレス", 100);
+}
+
+data class ConvertedImage(
+    val uri: Uri,
+    val file: File,
+    val fileSize: Long,
+    val format: ImageFormat,
+    val quality: ImageQuality
+)
+
+data class PerImageOption(
+    val format: ImageFormat = ImageFormat.PNG,
+    val quality: ImageQuality = ImageQuality.VERY_HIGH
+)
+
 class ImageConverter(private val context: Context) {
     
     suspend fun convertImages(
@@ -21,33 +48,48 @@ class ImageConverter(private val context: Context) {
         contentResolver: ContentResolver,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): List<Uri> = withContext(Dispatchers.IO) {
-        val convertedUris = mutableListOf<Uri>()
+        convertImagesWithOptions(
+            uris = uris,
+            contentResolver = contentResolver,
+            format = ImageFormat.PNG,
+            quality = ImageQuality.VERY_HIGH,
+            onProgress = onProgress
+        ).map { it.uri }
+    }
+
+    suspend fun convertImagesWithOptions(
+        uris: List<Uri>,
+        contentResolver: ContentResolver,
+        format: ImageFormat = ImageFormat.PNG,
+        quality: ImageQuality = ImageQuality.VERY_HIGH,
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ): List<ConvertedImage> = withContext(Dispatchers.IO) {
+        val options = uris.map { PerImageOption(format, quality) }
+        convertImagesWithPerImageOptions(uris, contentResolver, options, onProgress)
+    }
+
+    suspend fun convertImagesWithPerImageOptions(
+        uris: List<Uri>,
+        contentResolver: ContentResolver,
+        options: List<PerImageOption>,
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ): List<ConvertedImage> = withContext(Dispatchers.IO) {
+        val convertedImages = mutableListOf<ConvertedImage>()
         
         uris.forEachIndexed { index, uri ->
             onProgress(index + 1, uris.size)
+            val option = options.getOrElse(index) { PerImageOption() }
             
             try {
                 val inputStream = contentResolver.openInputStream(uri)
-                val mimeType = contentResolver.getType(uri)
                 
-                // すべての画像をEXIF対応で処理
                 val bitmap = BitmapFactory.decodeStream(inputStream)
                 bitmap?.let { originalBitmap ->
-                    // EXIF情報を読み取って回転を適用
                     val rotatedBitmap = applyExifRotation(uri, originalBitmap, contentResolver)
                     
-                    // JPEG/PNGで回転が不要ならそのまま、必要なら変換
-                    val needsConversion = mimeType != "image/jpeg" && mimeType != "image/png" || rotatedBitmap != originalBitmap
+                    val converted = convertImage(rotatedBitmap, option.format, option.quality, index)
+                    converted?.let { convertedImages.add(it) }
                     
-                    if (needsConversion) {
-                        val convertedUri = convertToPng(rotatedBitmap)
-                        convertedUri?.let { convertedUris.add(it) }
-                    } else {
-                        // 回転が不要な場合は元のURIをそのまま使用
-                        convertedUris.add(uri)
-                    }
-                    
-                    // 新しいBitmapを作成した場合はメモリを解放
                     if (rotatedBitmap != originalBitmap) {
                         rotatedBitmap.recycle()
                     }
@@ -58,7 +100,7 @@ class ImageConverter(private val context: Context) {
             }
         }
         
-        convertedUris
+        convertedImages
     }
     
     private fun applyExifRotation(uri: Uri, bitmap: Bitmap, contentResolver: ContentResolver): Bitmap {
@@ -85,7 +127,7 @@ class ImageConverter(private val context: Context) {
                         matrix.postRotate(270f)
                         matrix.postScale(-1f, 1f)
                     }
-                    else -> return bitmap // 回転不要
+                    else -> return bitmap
                 }
                 
                 Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
@@ -96,18 +138,41 @@ class ImageConverter(private val context: Context) {
         }
     }
     
-    private fun convertToPng(bitmap: Bitmap): Uri? {
+    private fun convertImage(bitmap: Bitmap, format: ImageFormat, quality: ImageQuality, index: Int): ConvertedImage? {
         return try {
-            val file = File(context.cacheDir, "converted_${System.currentTimeMillis()}.png")
+            val timestamp = System.currentTimeMillis()
+            val fileName = "converted_${format.extension}_q${quality.value}_${timestamp}_$index.${format.extension}"
+            val file = File(context.cacheDir, fileName)
             val outputStream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            
+            val compressFormat = when (format) {
+                ImageFormat.PNG -> Bitmap.CompressFormat.PNG
+                ImageFormat.JPEG -> Bitmap.CompressFormat.JPEG
+                ImageFormat.WEBP -> {
+                    if (quality == ImageQuality.LOSSLESS) {
+                        Bitmap.CompressFormat.WEBP_LOSSLESS
+                    } else {
+                        Bitmap.CompressFormat.WEBP_LOSSY
+                    }
+                }
+            }
+            
+            bitmap.compress(compressFormat, quality.value, outputStream)
             outputStream.flush()
             outputStream.close()
             
-            FileProvider.getUriForFile(
+            val uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
                 file
+            )
+            
+            ConvertedImage(
+                uri = uri,
+                file = file,
+                fileSize = file.length(),
+                format = format,
+                quality = quality
             )
         } catch (e: IOException) {
             e.printStackTrace()
