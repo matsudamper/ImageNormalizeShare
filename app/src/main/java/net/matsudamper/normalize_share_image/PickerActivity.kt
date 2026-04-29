@@ -21,7 +21,8 @@ import net.matsudamper.normalize_share_image.ui.theme.NormalizeImageShareTheme
 class PickerActivity : ComponentActivity() {
     private lateinit var cacheManager: CacheManager
     private var pendingSelectedUris = mutableStateOf<List<Uri>>(emptyList())
-    
+    private var hasImagesSelected = false
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -32,16 +33,18 @@ class PickerActivity : ComponentActivity() {
             finish()
         }
     }
-    
+
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
+            hasImagesSelected = true
             pendingSelectedUris.value = uris
-        } else {
+        } else if (!hasImagesSelected) {
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
+        // else: 再選択キャンセル → 既存の選択状態を維持
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,7 +72,9 @@ class PickerActivity : ComponentActivity() {
             }
         }
 
-        requestImageSelection()
+        if (savedInstanceState == null) {
+            requestImageSelection()
+        }
     }
     
     private fun checkPermissions(): Boolean {
