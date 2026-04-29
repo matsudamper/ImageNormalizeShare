@@ -2,6 +2,7 @@ package net.matsudamper.normalize_share_image
 
 import android.Manifest
 import android.app.Activity
+import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -27,14 +28,26 @@ class PickerActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            requestImageSelection()
+            launchImagePicker()
         } else {
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
     }
 
-    private val imagePickerLauncher = registerForActivityResult(
+    private val singleImagePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            hasImagesSelected = true
+            pendingSelectedUris.value = listOf(uri)
+        } else if (!hasImagesSelected) {
+            setResult(Activity.RESULT_CANCELED)
+            finish()
+        }
+    }
+
+    private val multipleImagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
@@ -87,12 +100,21 @@ class PickerActivity : ComponentActivity() {
     private fun requestPermissions() {
         permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
     }
-    
+
     private fun requestImageSelection() {
         if (checkPermissions()) {
-            imagePickerLauncher.launch("image/*")
+            launchImagePicker()
         } else {
             requestPermissions()
+        }
+    }
+
+    private fun launchImagePicker() {
+        val allowMultiple = intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
+        if (allowMultiple) {
+            multipleImagePickerLauncher.launch("image/*")
+        } else {
+            singleImagePickerLauncher.launch("image/*")
         }
     }
 
@@ -103,15 +125,11 @@ class PickerActivity : ComponentActivity() {
                 data = uris.first()
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             } else {
-                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                uris.forEachIndexed { index, uri ->
-                    if (index == 0) {
-                        clipData = android.content.ClipData.newRawUri("", uri)
-                    } else {
-                        clipData?.addItem(android.content.ClipData.Item(uri))
-                    }
+                data = uris.first()
+                clipData = ClipData.newRawUri("", uris.first()).also { clip ->
+                    uris.drop(1).forEach { clip.addItem(ClipData.Item(it)) }
                 }
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }
         setResult(Activity.RESULT_OK, resultIntent)
