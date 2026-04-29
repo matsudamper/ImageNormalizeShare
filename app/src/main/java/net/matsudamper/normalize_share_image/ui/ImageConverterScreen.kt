@@ -195,28 +195,36 @@ fun ImageConverterScreen(
             }
         }
     ) { paddingValues ->
-        if (images.isEmpty()) {
-            ImageConverterContent(modifier = Modifier.padding(paddingValues))
-        } else {
-            SelectedImagesGrid(
-                modifier = Modifier.padding(paddingValues),
-                images = images,
-                isSelectionMode = isSelectionMode,
-                selectedIndices = selectedIndices,
-                onLongPress = { index ->
-                    isSelectionMode = true
-                    selectedIndices = selectedIndices + index
-                },
-                onTap = { index ->
-                    if (isSelectionMode) {
-                        selectedIndices = if (index in selectedIndices) {
-                            selectedIndices - index
-                        } else {
-                            selectedIndices + index
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            ImageConverterContent(
+                modifier = if (images.isEmpty()) Modifier.weight(1f) else Modifier,
+                centered = images.isEmpty()
+            )
+            if (images.isNotEmpty()) {
+                SelectedImagesGrid(
+                    modifier = Modifier.weight(1f),
+                    images = images,
+                    isSelectionMode = isSelectionMode,
+                    selectedIndices = selectedIndices,
+                    onLongPress = { index ->
+                        isSelectionMode = true
+                        selectedIndices = selectedIndices + index
+                    },
+                    onTap = { index ->
+                        if (isSelectionMode) {
+                            selectedIndices = if (index in selectedIndices) {
+                                selectedIndices - index
+                            } else {
+                                selectedIndices + index
+                            }
                         }
                     }
-                }
-            )
+                )
+            }
         }
     }
 
@@ -368,14 +376,15 @@ private fun ImageGridItem(
 
 @Composable
 private fun ImageConverterContent(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    centered: Boolean = true
 ) {
     Column(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = if (centered) Arrangement.Center else Arrangement.Top
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
