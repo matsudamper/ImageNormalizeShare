@@ -109,6 +109,8 @@ fun ImageConverterScreen(
     var selectionMode by remember { mutableStateOf(false) }
     var selectedImageIndices by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    // onRequestSelectImages 経由で「画像を追加」を呼んだ場合、次の外部URI通知を追加扱いにする
+    var externalAddMode by remember { mutableStateOf(false) }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
@@ -132,6 +134,7 @@ fun ImageConverterScreen(
 
     fun openImagePicker() {
         onRequestSelectImages?.let {
+            externalAddMode = selectedUris.isNotEmpty()
             it()
             return
         }
@@ -144,10 +147,16 @@ fun ImageConverterScreen(
 
     LaunchedEffect(externalSelectedUris) {
         if (externalSelectedUris.isNotEmpty()) {
-            selectedUris = externalSelectedUris
+            if (externalAddMode) {
+                selectedUris = selectedUris + externalSelectedUris
+                perImageOptions = perImageOptions + externalSelectedUris.map { PerImageOption() }
+            } else {
+                selectedUris = externalSelectedUris
+                perImageOptions = externalSelectedUris.map { PerImageOption() }
+                selectedImageIndex = 0
+            }
+            externalAddMode = false
             convertedImages = emptyList()
-            perImageOptions = externalSelectedUris.map { PerImageOption() }
-            selectedImageIndex = 0
             selectionMode = false
             selectedImageIndices = emptySet()
             onExternalUrisConsumed()
@@ -167,7 +176,9 @@ fun ImageConverterScreen(
         selectedUris = newUris
         perImageOptions = newOptions
         convertedImages = emptyList()
-        selectedImageIndex = selectedImageIndex.coerceAtMost((newUris.size - 1).coerceAtLeast(0))
+        val removedBeforeSelected = selectedImageIndices.count { it < selectedImageIndex }
+        selectedImageIndex = (selectedImageIndex - removedBeforeSelected)
+            .coerceIn(0, (newUris.size - 1).coerceAtLeast(0))
         selectionMode = false
         selectedImageIndices = emptySet()
     }
