@@ -4,10 +4,12 @@ import android.Manifest
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -28,6 +30,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,6 +40,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -80,7 +84,7 @@ private enum class ApplyMode(val label: String) {
     INDIVIDUAL("個別適用");
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ImageConverterScreen(
     externalSelectedUris: List<Uri> = emptyList(),
@@ -92,34 +96,30 @@ fun ImageConverterScreen(
     val scope = rememberCoroutineScope()
     var showPermissionDialog by remember { mutableStateOf(false) }
 
-    // 選択された元画像URI
     var selectedUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    // 適用モード
     var applyMode by remember { mutableStateOf(ApplyMode.BATCH) }
-    // 一括用設定
     var batchFormat by remember { mutableStateOf(ImageFormat.PNG) }
     var batchQuality by remember { mutableStateOf(ImageQuality.VERY_HIGH) }
-    // 個別用設定（画像ごと）
     var perImageOptions by remember { mutableStateOf<List<PerImageOption>>(emptyList()) }
-    // 変換結果
     var convertedImages by remember { mutableStateOf<List<ConvertedImage>>(emptyList()) }
-    // 変換中フラグ
     var isConverting by remember { mutableStateOf(false) }
     var conversionProgress by remember { mutableStateOf(0 to 0) }
-    // 個別モード時に選択中の画像インデックス
     var selectedImageIndex by remember { mutableIntStateOf(0) }
-    
+
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedImageIndices by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            selectedUris = uris
+            selectedUris = selectedUris + uris
             convertedImages = emptyList()
-            perImageOptions = uris.map { PerImageOption() }
-            selectedImageIndex = 0
+            perImageOptions = perImageOptions + uris.map { PerImageOption() }
         }
     }
-    
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -141,26 +141,56 @@ fun ImageConverterScreen(
             permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
         }
     }
-    
+
     LaunchedEffect(externalSelectedUris) {
         if (externalSelectedUris.isNotEmpty()) {
             selectedUris = externalSelectedUris
             convertedImages = emptyList()
             perImageOptions = externalSelectedUris.map { PerImageOption() }
             selectedImageIndex = 0
+            selectionMode = false
+            selectedImageIndices = emptySet()
             onExternalUrisConsumed()
         }
     }
-    
+
+    fun deleteSelectedImages() {
+        val indicesToRemove = selectedImageIndices.sortedDescending()
+        val newUris = selectedUris.toMutableList()
+        val newOptions = perImageOptions.toMutableList()
+        indicesToRemove.forEach { idx ->
+            if (idx < newUris.size) {
+                newUris.removeAt(idx)
+                newOptions.removeAt(idx)
+            }
+        }
+        selectedUris = newUris
+        perImageOptions = newOptions
+        convertedImages = emptyList()
+        selectedImageIndex = selectedImageIndex.coerceAtMost((newUris.size - 1).coerceAtLeast(0))
+        selectionMode = false
+        selectedImageIndices = emptySet()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "画像変換共有",
+                        text = if (selectionMode) "${selectedImageIndices.size}枚選択中" else "画像変換共有",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
+                },
+                actions = {
+                    if (selectionMode && selectedImageIndices.isNotEmpty()) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_delete),
+                                contentDescription = "削除"
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -209,9 +239,7 @@ fun ImageConverterScreen(
         }
     ) { paddingValues ->
         if (selectedUris.isEmpty()) {
-            ImageConverterContent(
-                modifier = Modifier.padding(paddingValues)
-            )
+            ImageConverterContent(modifier = Modifier.padding(paddingValues))
         } else {
             ImagePreviewContent(
                 modifier = Modifier.padding(paddingValues),
@@ -224,6 +252,8 @@ fun ImageConverterScreen(
                 convertedImages = convertedImages,
                 isConverting = isConverting,
                 conversionProgress = conversionProgress,
+                selectionMode = selectionMode,
+                selectedImageIndices = selectedImageIndices,
                 onApplyModeChanged = {
                     applyMode = it
                     convertedImages = emptyList()
@@ -258,6 +288,21 @@ fun ImageConverterScreen(
                     convertedImages = emptyList()
                 },
                 onSelectedImageIndexChanged = { selectedImageIndex = it },
+                onEnterSelectionMode = { index ->
+                    selectionMode = true
+                    selectedImageIndices = setOf(index)
+                },
+                onToggleImageSelection = { index ->
+                    val newIndices = if (index in selectedImageIndices) {
+                        selectedImageIndices - index
+                    } else {
+                        selectedImageIndices + index
+                    }
+                    selectedImageIndices = newIndices
+                    if (newIndices.isEmpty()) {
+                        selectionMode = false
+                    }
+                },
                 onConvert = {
                     scope.launch {
                         isConverting = true
@@ -280,19 +325,38 @@ fun ImageConverterScreen(
                         isConverting = false
                     }
                 },
-                onSelectNewImages = { openImagePicker() }
+                onAddImages = { openImagePicker() }
             )
         }
     }
-    
-    if (showPermissionDialog) {
-        PermissionDialog(
-            onDismiss = { showPermissionDialog = false }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("画像を削除") },
+            text = { Text("選択した${selectedImageIndices.size}枚の画像を削除しますか？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    deleteSelectedImages()
+                }) {
+                    Text("削除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("キャンセル")
+                }
+            }
         )
+    }
+
+    if (showPermissionDialog) {
+        PermissionDialog(onDismiss = { showPermissionDialog = false })
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun ImagePreviewContent(
     modifier: Modifier = Modifier,
@@ -305,90 +369,112 @@ private fun ImagePreviewContent(
     convertedImages: List<ConvertedImage>,
     isConverting: Boolean,
     conversionProgress: Pair<Int, Int>,
+    selectionMode: Boolean,
+    selectedImageIndices: Set<Int>,
     onApplyModeChanged: (ApplyMode) -> Unit,
     onBatchFormatChanged: (ImageFormat) -> Unit,
     onBatchQualityChanged: (ImageQuality) -> Unit,
     onPerImageFormatChanged: (Int, ImageFormat) -> Unit,
     onPerImageQualityChanged: (Int, ImageQuality) -> Unit,
     onSelectedImageIndexChanged: (Int) -> Unit,
+    onEnterSelectionMode: (Int) -> Unit,
+    onToggleImageSelection: (Int) -> Unit,
     onConvert: () -> Unit,
-    onSelectNewImages: () -> Unit
+    onAddImages: () -> Unit
 ) {
+    val thumbnailShape = RoundedCornerShape(8.dp)
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // ── サムネイルプレビュー ──
         Text(
             text = "選択された画像 (${selectedUris.size}枚)",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             itemsIndexed(selectedUris) { index, uri ->
-                val isSelected = applyMode == ApplyMode.INDIVIDUAL && index == selectedImageIndex
+                val isIndividualSelected = !selectionMode && applyMode == ApplyMode.INDIVIDUAL && index == selectedImageIndex
+                val isChecked = index in selectedImageIndices
+
                 Card(
                     modifier = Modifier
                         .size(120.dp)
+                        .clip(thumbnailShape)
                         .then(
-                            if (isSelected) {
+                            if (isIndividualSelected) {
                                 Modifier.border(
                                     width = 3.dp,
                                     color = MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = thumbnailShape
                                 )
                             } else Modifier
                         )
-                        .clickable(enabled = applyMode == ApplyMode.INDIVIDUAL) {
-                            onSelectedImageIndexChanged(index)
-                        },
-                    shape = RoundedCornerShape(8.dp),
+                        .combinedClickable(
+                            onClick = {
+                                if (selectionMode) {
+                                    onToggleImageSelection(index)
+                                } else if (applyMode == ApplyMode.INDIVIDUAL) {
+                                    onSelectedImageIndexChanged(index)
+                                }
+                            },
+                            onLongClick = {
+                                if (!selectionMode) {
+                                    onEnterSelectionMode(index)
+                                }
+                            }
+                        ),
+                    shape = thumbnailShape,
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = uri),
-                        contentDescription = "画像 ${index + 1}",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(model = uri),
+                            contentDescription = "画像 ${index + 1}",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        if (selectionMode) {
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = null,
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            )
+                        }
+                    }
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
-        // 別の画像を選択
-        TextButton(onClick = onSelectNewImages) {
+
+        TextButton(onClick = onAddImages) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_add_photo),
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Text("別の画像を選択")
+            Text("画像を追加")
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
-        // ── 適用モード切替 ──
+
         if (selectedUris.size > 1) {
             Text(
                 text = "適用モード",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 ApplyMode.entries.forEachIndexed { index, mode ->
                     SegmentedButton(
@@ -403,11 +489,10 @@ private fun ImagePreviewContent(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
         }
-        
-        // ── 設定エリア ──
+
         when (applyMode) {
             ApplyMode.BATCH -> {
                 BatchSettingsSection(
@@ -431,10 +516,9 @@ private fun ImagePreviewContent(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
-        // ── 変換ボタン ──
+
         Button(
             onClick = onConvert,
             enabled = !isConverting,
@@ -458,19 +542,16 @@ private fun ImagePreviewContent(
                 Text("変換")
             }
         }
-        
-        // ── 変換結果表示 ──
+
         if (convertedImages.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             ConversionResultCard(convertedImages = convertedImages)
         }
-        
-        // FABとの重なりを避けるための余白
+
         Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
-// ── 一括設定セクション ──
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun BatchSettingsSection(
@@ -484,9 +565,9 @@ private fun BatchSettingsSection(
         selectedFormat = selectedFormat,
         onFormatChanged = onFormatChanged
     )
-    
+
     Spacer(modifier = Modifier.height(16.dp))
-    
+
     QualitySelector(
         label = "画質",
         selectedQuality = selectedQuality,
@@ -496,7 +577,6 @@ private fun BatchSettingsSection(
     )
 }
 
-// ── 個別設定セクション ──
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun IndividualSettingsSection(
@@ -516,7 +596,6 @@ private fun IndividualSettingsSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // 小さいサムネイル
                 Card(
                     modifier = Modifier.size(48.dp),
                     shape = RoundedCornerShape(6.dp)
@@ -539,7 +618,7 @@ private fun IndividualSettingsSection(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))
@@ -549,9 +628,9 @@ private fun IndividualSettingsSection(
                 selectedFormat = currentOption.format,
                 onFormatChanged = onFormatChanged
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             QualitySelector(
                 label = "画質",
                 selectedQuality = currentOption.quality,
@@ -560,7 +639,6 @@ private fun IndividualSettingsSection(
                 onQualityChanged = onQualityChanged
             )
 
-            // 他の画像の設定サマリ
             if (perImageOptions.size > 1) {
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider()
@@ -589,7 +667,6 @@ private fun IndividualSettingsSection(
     }
 }
 
-// ── フォーマット選択共通コンポーネント ──
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FormatSelector(
@@ -602,9 +679,9 @@ private fun FormatSelector(
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold
     )
-    
+
     Spacer(modifier = Modifier.height(4.dp))
-    
+
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -636,7 +713,6 @@ private fun FormatSelector(
     }
 }
 
-// ── クオリティ選択共通コンポーネント ──
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun QualitySelector(
@@ -672,9 +748,7 @@ private fun QualitySelector(
         ImageQuality.entries
     }
 
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         qualities.forEach { quality ->
             FilterChip(
                 selected = selectedQuality == quality,
@@ -685,7 +759,6 @@ private fun QualitySelector(
     }
 }
 
-// ── 変換結果カード ──
 @Composable
 private fun ConversionResultCard(
     convertedImages: List<ConvertedImage>
@@ -703,9 +776,9 @@ private fun ConversionResultCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             val totalSize = convertedImages.sumOf { it.fileSize }
             Text(
                 text = "ファイル数: ${convertedImages.size}",
@@ -718,9 +791,9 @@ private fun ConversionResultCard(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             convertedImages.forEachIndexed { index, image ->
                 val qualityPart = if (image.format != ImageFormat.PNG) " / ${image.quality.displayName}" else ""
                 Text(
@@ -729,9 +802,9 @@ private fun ConversionResultCard(
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text(
                 text = "送信ボタンを押してこの画像を共有できます",
                 style = MaterialTheme.typography.bodySmall,
@@ -776,17 +849,17 @@ private fun ImageConverterContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Text(
                     text = "• PNG/WebP形式に変換\n• クオリティを選択可能\n• 一括適用 / 個別適用を選択\n• 複数選択対応",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Text(
                     text = "画像を選択して変換・共有を開始",
                     style = MaterialTheme.typography.bodyMedium,
