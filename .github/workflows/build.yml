@@ -69,10 +69,10 @@ jobs:
     - name: Upload GitHub QR artifact
       if: github.event_name == 'pull_request'
       id: github_qr_artifact
-      uses: matsudamper/actions/upload-matsudamper-s3@a1ecf81b1a0ce320824a49711e456f396e4e8fea
-      continue-on-error: true
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        file_path: qrcode-github.png
+        path: qrcode-github.png
+        archive: false
 
     - name: Generate S3 QR code
       if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
@@ -81,10 +81,10 @@ jobs:
     - name: Upload S3 QR artifact
       if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
       id: s3_qr_artifact
-      uses: matsudamper/actions/upload-matsudamper-s3@a1ecf81b1a0ce320824a49711e456f396e4e8fea
-      continue-on-error: true
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        file_path: qrcode-s3.png
+        path: qrcode-s3.png
+        archive: false
 
     - name: Comment APK download URLs
       if: github.event_name == 'pull_request'
@@ -95,7 +95,7 @@ jobs:
           ✅ **Debug APK is ready!**
           | Storage | Download Link | QR Code |
           | :--- | :--- | :--- |
-          | 🐙 GitHub Artifacts | [Download](${{ steps.upload_apk.outputs.artifact-url }}) | [View](${{ steps.github_qr_artifact.outputs.url }}) |
-          ${{ steps.upload_s3.outputs.url && format('| ☁️ S3 | [Download]({0}) | [View]({1}) |', steps.upload_s3.outputs.url, steps.s3_qr_artifact.outputs.url) || '' }}
+          | 🐙 GitHub Artifacts | [Download](${{ steps.upload_apk.outputs.artifact-url }}) | [View](${{ steps.github_qr_artifact.outputs.artifact-url }}) |
+          ${{ steps.upload_s3.outputs.url && format('| ☁️ S3 | [Download]({0}) | [View]({1}) |', steps.upload_s3.outputs.url, steps.s3_qr_artifact.outputs.artifact-url) || '' }}
           ---
           *Artifact Name: `${{ env.APK_NAME }}`*
