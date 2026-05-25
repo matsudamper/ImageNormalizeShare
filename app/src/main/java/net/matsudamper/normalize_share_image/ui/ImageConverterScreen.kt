@@ -183,6 +183,28 @@ fun ImageConverterScreen(
         selectedImageIndices = emptySet()
     }
 
+    suspend fun convertSelectedImages(): List<ConvertedImage> {
+        isConverting = true
+        val converter = ImageConverter(context)
+        val options = when (applyMode) {
+            ApplyMode.BATCH -> selectedUris.map {
+                PerImageOption(batchFormat, batchQuality)
+            }
+            ApplyMode.INDIVIDUAL -> perImageOptions
+        }
+        val results = converter.convertImagesWithPerImageOptions(
+            uris = selectedUris,
+            contentResolver = context.contentResolver,
+            options = options,
+            onProgress = { current, total ->
+                conversionProgress = current to total
+            }
+        )
+        convertedImages = results
+        isConverting = false
+        return results
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -210,23 +232,45 @@ fun ImageConverterScreen(
             )
         },
         floatingActionButton = {
-            if (convertedImages.isNotEmpty()) {
+            if (selectedUris.isNotEmpty()) {
                 ExtendedFloatingActionButton(
-                    onClick = { onShareImages(convertedImages) },
+                    onClick = {
+                        if (isConverting) return@ExtendedFloatingActionButton
+                        scope.launch {
+                            val results = convertedImages.ifEmpty { convertSelectedImages() }
+                            if (results.isNotEmpty()) {
+                                onShareImages(results)
+                            }
+                        }
+                    },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_send),
-                        contentDescription = "送信",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "送信",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Medium
-                    )
+                    if (isConverting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "変換中... (${conversionProgress.first}/${conversionProgress.second})",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_send),
+                            contentDescription = "送信",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "送信",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             } else {
                 ExtendedFloatingActionButton(
@@ -315,26 +359,7 @@ fun ImageConverterScreen(
                     }
                 },
                 onConvert = {
-                    scope.launch {
-                        isConverting = true
-                        val converter = ImageConverter(context)
-                        val options = when (applyMode) {
-                            ApplyMode.BATCH -> selectedUris.map {
-                                PerImageOption(batchFormat, batchQuality)
-                            }
-                            ApplyMode.INDIVIDUAL -> perImageOptions
-                        }
-                        val results = converter.convertImagesWithPerImageOptions(
-                            uris = selectedUris,
-                            contentResolver = context.contentResolver,
-                            options = options,
-                            onProgress = { current, total ->
-                                conversionProgress = current to total
-                            }
-                        )
-                        convertedImages = results
-                        isConverting = false
-                    }
+                    scope.launch { convertSelectedImages() }
                 },
                 onAddImages = { openImagePicker() }
             )
