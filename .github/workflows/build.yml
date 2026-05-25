@@ -30,7 +30,6 @@ jobs:
       uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
     - name: Decode debug keystore
-      if: ${{ env.DEBUG_KEYSTORE_BASE64 != '' }}
       shell: bash
       run: |
         echo "${DEBUG_KEYSTORE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/debug.keystore"
