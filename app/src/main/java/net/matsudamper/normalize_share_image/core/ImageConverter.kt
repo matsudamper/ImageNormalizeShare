@@ -37,8 +37,8 @@ data class ConvertedImage(
 )
 
 data class PerImageOption(
-    val format: ImageFormat = ImageFormat.PNG,
-    val quality: ImageQuality = ImageQuality.VERY_HIGH
+    val format: ImageFormat = ImageFormat.JPEG,
+    val quality: ImageQuality = ImageQuality.HIGH
 )
 
 class ImageConverter(private val context: Context) {
@@ -51,8 +51,8 @@ class ImageConverter(private val context: Context) {
         convertImagesWithOptions(
             uris = uris,
             contentResolver = contentResolver,
-            format = ImageFormat.PNG,
-            quality = ImageQuality.VERY_HIGH,
+            format = ImageFormat.JPEG,
+            quality = ImageQuality.HIGH,
             onProgress = onProgress
         ).map { it.uri }
     }
@@ -60,8 +60,8 @@ class ImageConverter(private val context: Context) {
     suspend fun convertImagesWithOptions(
         uris: List<Uri>,
         contentResolver: ContentResolver,
-        format: ImageFormat = ImageFormat.PNG,
-        quality: ImageQuality = ImageQuality.VERY_HIGH,
+        format: ImageFormat = ImageFormat.JPEG,
+        quality: ImageQuality = ImageQuality.HIGH,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): List<ConvertedImage> = withContext(Dispatchers.IO) {
         val options = uris.map { PerImageOption(format, quality) }

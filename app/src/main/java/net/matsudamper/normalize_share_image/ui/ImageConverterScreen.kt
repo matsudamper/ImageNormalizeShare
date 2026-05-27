@@ -98,8 +98,8 @@ fun ImageConverterScreen(
 
     var selectedUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var applyMode by remember { mutableStateOf(ApplyMode.BATCH) }
-    var batchFormat by remember { mutableStateOf(ImageFormat.PNG) }
-    var batchQuality by remember { mutableStateOf(ImageQuality.VERY_HIGH) }
+    var batchFormat by remember { mutableStateOf(ImageFormat.JPEG) }
+    var batchQuality by remember { mutableStateOf(ImageQuality.HIGH) }
     var perImageOptions by remember { mutableStateOf<List<PerImageOption>>(emptyList()) }
     var convertedImages by remember { mutableStateOf<List<ConvertedImage>>(emptyList()) }
     var isConverting by remember { mutableStateOf(false) }
