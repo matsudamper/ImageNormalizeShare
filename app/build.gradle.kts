@@ -61,6 +61,16 @@ kotlin {
     }
 }
 
+tasks.withType<Test> {
+    testLogging {
+        events("passed", "skipped", "failed")
+        showExceptions = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showStackTraces = true
+    }
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
