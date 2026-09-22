@@ -35,6 +35,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (useCiDebugKeystore) {
+                signingConfig = signingConfigs.getByName("debugCi")
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

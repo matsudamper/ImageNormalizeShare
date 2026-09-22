@@ -3,5 +3,17 @@
   "extends": [
     "config:recommended"
   ],
-  "pinDigests": true
+  "pinDigests": true,
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "org.jetbrains.kotlin.plugin.compose",
+        "androidx.compose:compose-bom",
+        "io.coil-kt.coil3:coil-compose",
+        "com.android.application",
+        "actions/*"
+      ],
+      "automerge": true
+    }
+  ]
 }
