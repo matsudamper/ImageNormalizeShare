@@ -80,7 +80,8 @@ class PickerActivity : ComponentActivity() {
                         pendingSelectedUris.value = emptyList()
                     },
                     onRequestSelectImages = { requestImageSelection() },
-                    onShareImages = { convertedImages -> returnConvertedImages(convertedImages) }
+                    onShareImages = { convertedImages -> returnConvertedImages(convertedImages) },
+                    onClickSettings = null,
                 )
             }
         }

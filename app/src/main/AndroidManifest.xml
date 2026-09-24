@@ -37,6 +37,11 @@
             
         </activity>
         
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.NormalizeImageShare" />
+
         <!-- 画像選択・変換Activity -->
         <activity
             android:name=".PickerActivity"

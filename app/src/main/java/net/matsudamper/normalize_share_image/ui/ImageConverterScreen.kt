@@ -90,7 +90,8 @@ fun ImageConverterScreen(
     externalSelectedUris: List<Uri> = emptyList(),
     onExternalUrisConsumed: () -> Unit = {},
     onRequestSelectImages: (() -> Unit)? = null,
-    onShareImages: (List<ConvertedImage>) -> Unit = {}
+    onShareImages: (List<ConvertedImage>) -> Unit = {},
+    onClickSettings: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -221,6 +222,14 @@ fun ImageConverterScreen(
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_delete),
                                 contentDescription = "削除"
+                            )
+                        }
+                    }
+                    if (onClickSettings != null) {
+                        IconButton(onClick = onClickSettings) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_settings),
+                                contentDescription = "設定"
                             )
                         }
                     }

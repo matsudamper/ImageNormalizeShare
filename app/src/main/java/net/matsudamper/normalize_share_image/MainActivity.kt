@@ -43,7 +43,10 @@ class MainActivity : ComponentActivity() {
                     onExternalUrisConsumed = {
                         pendingSharedUris = emptyList()
                     },
-                    onShareImages = { convertedImages -> shareConvertedImages(convertedImages) }
+                    onShareImages = { convertedImages -> shareConvertedImages(convertedImages) },
+                    onClickSettings = {
+                        startActivity(Intent(this, SettingsActivity::class.java))
+                    },
                 )
             }
         }
