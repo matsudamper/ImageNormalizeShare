@@ -1,8 +1,10 @@
 package net.matsudamper.normalize_share_image
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -25,7 +27,11 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun openGitHubReleases() {
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_RELEASES_URL)))
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_RELEASES_URL)))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "URL を開けるアプリが見つかりません", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private companion object {
