@@ -8,22 +8,55 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import net.matsudamper.normalize_share_image.core.DefaultConversionSettingsRepository
+import net.matsudamper.normalize_share_image.core.ImageFormat
+import net.matsudamper.normalize_share_image.core.ImageQuality
+import net.matsudamper.normalize_share_image.core.PerImageOption
 import net.matsudamper.normalize_share_image.ui.SettingsScreen
 import net.matsudamper.normalize_share_image.ui.theme.NormalizeImageShareTheme
 
 class SettingsActivity : ComponentActivity() {
+    private lateinit var defaultConversionSettingsRepository: DefaultConversionSettingsRepository
+    private var defaultConversionOption by mutableStateOf(PerImageOption())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        defaultConversionSettingsRepository = DefaultConversionSettingsRepository(this)
+        defaultConversionOption = defaultConversionSettingsRepository.load()
+
         setContent {
             NormalizeImageShareTheme {
                 SettingsScreen(
+                    defaultOption = defaultConversionOption,
                     onClickBack = { finish() },
                     onClickGitHubReleases = { openGitHubReleases() },
+                    onDefaultFormatChanged = { format -> changeDefaultFormat(format) },
+                    onDefaultQualityChanged = { quality ->
+                        updateDefaultOption(defaultConversionOption.copy(quality = quality))
+                    },
                 )
             }
         }
+    }
+
+    private fun changeDefaultFormat(format: ImageFormat) {
+        val current = defaultConversionOption
+        val quality = if (format == ImageFormat.JPEG && current.quality == ImageQuality.LOSSLESS) {
+            ImageQuality.VERY_HIGH
+        } else {
+            current.quality
+        }
+        updateDefaultOption(current.copy(format = format, quality = quality))
+    }
+
+    private fun updateDefaultOption(option: PerImageOption) {
+        defaultConversionOption = option
+        defaultConversionSettingsRepository.save(option)
     }
 
     private fun openGitHubReleases() {

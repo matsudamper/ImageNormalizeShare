@@ -92,6 +92,7 @@ fun ImageConverterScreen(
     onRequestSelectImages: (() -> Unit)? = null,
     onShareImages: (List<ConvertedImage>) -> Unit = {},
     onClickSettings: (() -> Unit)?,
+    defaultOption: PerImageOption,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -99,8 +100,8 @@ fun ImageConverterScreen(
 
     var selectedUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var applyMode by remember { mutableStateOf(ApplyMode.BATCH) }
-    var batchFormat by remember { mutableStateOf(ImageFormat.JPEG) }
-    var batchQuality by remember { mutableStateOf(ImageQuality.HIGH) }
+    var batchFormat by remember { mutableStateOf(defaultOption.format) }
+    var batchQuality by remember { mutableStateOf(defaultOption.quality) }
     var perImageOptions by remember { mutableStateOf<List<PerImageOption>>(emptyList()) }
     var convertedImages by remember { mutableStateOf<List<ConvertedImage>>(emptyList()) }
     var isConverting by remember { mutableStateOf(false) }
@@ -113,13 +114,19 @@ fun ImageConverterScreen(
     // onRequestSelectImages 経由で「画像を追加」を呼んだ場合、次の外部URI通知を追加扱いにする
     var externalAddMode by remember { mutableStateOf(false) }
 
+    LaunchedEffect(defaultOption) {
+        batchFormat = defaultOption.format
+        batchQuality = defaultOption.quality
+        convertedImages = emptyList()
+    }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
             selectedUris = selectedUris + uris
             convertedImages = emptyList()
-            perImageOptions = perImageOptions + uris.map { PerImageOption() }
+            perImageOptions = perImageOptions + uris.map { defaultOption }
         }
     }
 
@@ -150,10 +157,10 @@ fun ImageConverterScreen(
         if (externalSelectedUris.isNotEmpty()) {
             if (externalAddMode) {
                 selectedUris = selectedUris + externalSelectedUris
-                perImageOptions = perImageOptions + externalSelectedUris.map { PerImageOption() }
+                perImageOptions = perImageOptions + externalSelectedUris.map { defaultOption }
             } else {
                 selectedUris = externalSelectedUris
-                perImageOptions = externalSelectedUris.map { PerImageOption() }
+                perImageOptions = externalSelectedUris.map { defaultOption }
                 selectedImageIndex = 0
             }
             externalAddMode = false
@@ -714,7 +721,7 @@ private fun IndividualSettingsSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FormatSelector(
+internal fun FormatSelector(
     label: String,
     selectedFormat: ImageFormat,
     onFormatChanged: (ImageFormat) -> Unit
@@ -760,7 +767,7 @@ private fun FormatSelector(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun QualitySelector(
+internal fun QualitySelector(
     label: String,
     selectedQuality: ImageQuality,
     format: ImageFormat,

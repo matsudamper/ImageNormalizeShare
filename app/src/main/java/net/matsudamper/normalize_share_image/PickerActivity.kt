@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import net.matsudamper.normalize_share_image.core.CacheManager
 import net.matsudamper.normalize_share_image.core.ConvertedImage
+import net.matsudamper.normalize_share_image.core.DefaultConversionSettingsRepository
 import net.matsudamper.normalize_share_image.ui.ImageConverterScreen
 import net.matsudamper.normalize_share_image.ui.theme.NormalizeImageShareTheme
 
@@ -64,6 +65,7 @@ class PickerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         cacheManager = CacheManager(this)
+        val defaultConversionOption = DefaultConversionSettingsRepository(this).load()
         
         // 初回起動時のみキャッシュクリーンアップを実行
         if (savedInstanceState == null) {
@@ -82,6 +84,7 @@ class PickerActivity : ComponentActivity() {
                     onRequestSelectImages = { requestImageSelection() },
                     onShareImages = { convertedImages -> returnConvertedImages(convertedImages) },
                     onClickSettings = null,
+                    defaultOption = defaultConversionOption,
                 )
             }
         }
