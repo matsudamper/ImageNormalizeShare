@@ -100,8 +100,8 @@ fun ImageConverterScreen(
 
     var selectedUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var applyMode by remember { mutableStateOf(ApplyMode.BATCH) }
-    var batchFormat by remember(defaultOption) { mutableStateOf(defaultOption.format) }
-    var batchQuality by remember(defaultOption) { mutableStateOf(defaultOption.quality) }
+    var batchFormat by remember { mutableStateOf(defaultOption.format) }
+    var batchQuality by remember { mutableStateOf(defaultOption.quality) }
     var perImageOptions by remember { mutableStateOf<List<PerImageOption>>(emptyList()) }
     var convertedImages by remember { mutableStateOf<List<ConvertedImage>>(emptyList()) }
     var isConverting by remember { mutableStateOf(false) }
@@ -113,6 +113,12 @@ fun ImageConverterScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     // onRequestSelectImages 経由で「画像を追加」を呼んだ場合、次の外部URI通知を追加扱いにする
     var externalAddMode by remember { mutableStateOf(false) }
+
+    LaunchedEffect(defaultOption) {
+        batchFormat = defaultOption.format
+        batchQuality = defaultOption.quality
+        convertedImages = emptyList()
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
