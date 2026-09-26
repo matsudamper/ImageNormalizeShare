@@ -13,6 +13,8 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import net.matsudamper.normalize_share_image.core.CacheManager
 import net.matsudamper.normalize_share_image.core.ConvertedImage
+import net.matsudamper.normalize_share_image.core.DefaultConversionSettingsRepository
+import net.matsudamper.normalize_share_image.core.PerImageOption
 import net.matsudamper.normalize_share_image.core.PermissionManager
 import net.matsudamper.normalize_share_image.ui.ImageConverterScreen
 import net.matsudamper.normalize_share_image.ui.theme.NormalizeImageShareTheme
@@ -20,6 +22,8 @@ import net.matsudamper.normalize_share_image.ui.theme.NormalizeImageShareTheme
 class MainActivity : ComponentActivity() {
     private lateinit var permissionManager: PermissionManager
     private lateinit var cacheManager: CacheManager
+    private lateinit var defaultConversionSettingsRepository: DefaultConversionSettingsRepository
+    private var defaultConversionOption by mutableStateOf(PerImageOption())
     private var pendingSharedUris by mutableStateOf<List<Uri>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +32,8 @@ class MainActivity : ComponentActivity() {
 
         permissionManager = PermissionManager(this)
         cacheManager = CacheManager(this)
+        defaultConversionSettingsRepository = DefaultConversionSettingsRepository(this)
+        defaultConversionOption = defaultConversionSettingsRepository.load()
         
         // 初回起動時のみキャッシュクリーンアップを実行
         if (savedInstanceState == null) {
@@ -47,11 +53,18 @@ class MainActivity : ComponentActivity() {
                     onClickSettings = {
                         startActivity(Intent(this, SettingsActivity::class.java))
                     },
+                    defaultOption = defaultConversionOption,
                 )
             }
         }
 
         handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 設定画面で変更されたデフォルトを戻ってきた時点で反映する
+        defaultConversionOption = defaultConversionSettingsRepository.load()
     }
 
     override fun onNewIntent(intent: Intent) {
