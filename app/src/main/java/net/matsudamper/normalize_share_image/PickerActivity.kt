@@ -97,11 +97,7 @@ class PickerActivity : ComponentActivity() {
     }
 
     private fun showCallerToast() {
-        val callerPackageName = callingPackage
-            ?: referrer
-                ?.takeIf { it.scheme == "android-app" }
-                ?.host
-        val message = "起動元: ${callerPackageName ?: "不明"}"
+        val message = "起動元: ${callingPackage ?: "不明"}"
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
