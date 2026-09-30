@@ -6,11 +6,22 @@
   "pinDigests": true,
   "packageRules": [
     {
+      "matchManagers": [
+        "gradle"
+      ],
       "matchPackageNames": [
         "org.jetbrains.kotlin.plugin.compose",
         "androidx.compose:compose-bom",
         "io.coil-kt.coil3:coil-compose",
-        "com.android.application",
+        "com.android.application"
+      ],
+      "automerge": true
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
         "actions/*"
       ],
       "automerge": true
