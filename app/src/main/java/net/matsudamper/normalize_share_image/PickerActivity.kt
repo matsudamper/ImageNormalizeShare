@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -90,10 +91,20 @@ class PickerActivity : ComponentActivity() {
         }
 
         if (savedInstanceState == null) {
+            showCallerToast()
             requestImageSelection()
         }
     }
-    
+
+    private fun showCallerToast() {
+        val callerPackageName = callingPackage
+            ?: referrer
+                ?.takeIf { it.scheme == "android-app" }
+                ?.host
+        val message = "起動元: ${callerPackageName ?: "不明"}"
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     private fun checkPermissions(): Boolean {
         return ContextCompat.checkSelfPermission(
             this,
