@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -105,7 +104,6 @@ class PickerActivity : ComponentActivity() {
             appendLine("data: ${intent.data}")
             append("extras: ${intent.extras}")
         }
-        Log.d("PickerActivity", message)
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
