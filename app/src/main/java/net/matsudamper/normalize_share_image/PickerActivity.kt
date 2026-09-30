@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -97,7 +98,14 @@ class PickerActivity : ComponentActivity() {
     }
 
     private fun showCallerToast() {
-        val message = "起動元: ${callingPackage ?: "不明"}"
+        val message = buildString {
+            appendLine("起動元: ${callingPackage ?: "不明"}")
+            appendLine("action: ${intent.action}")
+            appendLine("type: ${intent.type}")
+            appendLine("data: ${intent.data}")
+            append("extras: ${intent.extras}")
+        }
+        Log.d("PickerActivity", message)
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
