@@ -3,6 +3,7 @@ package net.matsudamper.normalize_share_image
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -58,6 +59,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        if (savedInstanceState == null) {
+            showReferrerToast()
+        }
         handleIntent(intent)
     }
 
@@ -70,7 +74,16 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        showReferrerToast()
         handleIntent(intent)
+    }
+
+    private fun showReferrerToast() {
+        val referrerPackageName = referrer
+            ?.takeIf { it.scheme == "android-app" }
+            ?.host
+        val message = "起動元: ${referrerPackageName ?: "不明"}"
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     private fun handleIntent(intent: Intent) {
