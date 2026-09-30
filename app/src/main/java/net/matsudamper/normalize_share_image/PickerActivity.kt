@@ -4,9 +4,11 @@ import android.Manifest
 import android.app.Activity
 import android.content.ClipData
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -105,6 +107,13 @@ class PickerActivity : ComponentActivity() {
             append("extras: ${intent.extras}")
         }
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        if (isDebuggableBuild()) {
+            Log.d("PickerActivity", message)
+        }
+    }
+
+    private fun isDebuggableBuild(): Boolean {
+        return applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     }
 
     private fun checkPermissions(): Boolean {
