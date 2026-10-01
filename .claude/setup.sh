@@ -196,7 +196,7 @@ write_gradle_properties()
 
 PYEOF
 
-cd "${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
+cd "${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 sdk_dir_in_local_properties=""
 if [ -f local.properties ]; then
